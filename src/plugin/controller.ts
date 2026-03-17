@@ -2,7 +2,7 @@
 // EMOJI KIT BUILDER — CONTROLLER
 // ============================================
 
-figma.showUI(__html__, { width: 380, height: 960, title: 'Emoji Kit Builder' });
+figma.showUI(__html__, { width: 380, height: 640, title: 'Emoji Kit Builder' });
 
 // ============================================
 // INTERFACES
@@ -33,7 +33,6 @@ const FRAME_SIZE = 1024;
 // ============================================
 
 let lockedSetId: string | null = null;
-let lockedSetName: string = '';
 
 // ============================================
 // HELPERS
@@ -122,27 +121,94 @@ async function handleGenerate(payload: GeneratePayload): Promise<number> {
     if (!existingSet || existingSet.type !== 'COMPONENT_SET') {
       throw new Error('Locked component set not found — it may have been deleted.');
     }
-    // Append directly into the existing ComponentSetNode — preserves Name/Pose properties.
-    // DO NOT use combineAsVariants on existing children: it detaches them from the set,
-    // loses their property context, and Figma regenerates "Property 1/2/3" duplicates.
+
+    // Count distinct pose columns already in the set
+    const existingPoses = new Set(
+      existingSet.children
+        .map((child) => {
+          const m = child.name.match(/Pose=([^,]+)/);
+          return m ? m[1].trim() : null;
+        })
+        .filter((p): p is string => p !== null)
+    );
+    const numCols = Math.max(existingPoses.size, newComponents.length);
+
+    // Ensure horizontal-wrap grid layout
+    existingSet.layoutMode = 'HORIZONTAL';
+    (existingSet as unknown as { layoutWrap: string }).layoutWrap = 'WRAP';
+    existingSet.primaryAxisSizingMode = 'FIXED';
+    existingSet.counterAxisSizingMode = 'AUTO';
+    existingSet.itemSpacing = 0;
+    existingSet.resize(numCols * FRAME_SIZE, existingSet.height);
+
+    // Increment ROWS layout grid count (add one if the set has none yet)
+    const grids: LayoutGrid[] = [...existingSet.layoutGrids];
+    const rowsIdx = grids.findIndex((g) => g.pattern === 'ROWS');
+    if (rowsIdx >= 0) {
+      const g = grids[rowsIdx] as RowsColsLayoutGrid;
+      grids[rowsIdx] = { ...g, count: g.count + 1 };
+    } else {
+      const currentRows = Math.max(1, Math.ceil(existingSet.children.length / numCols));
+      grids.push({
+        pattern: 'ROWS',
+        alignment: 'MIN',
+        gutterSize: 0,
+        offset: 0,
+        count: currentRows + 1,
+        sectionSize: FRAME_SIZE,
+        visible: true,
+        color: { r: 0.5, g: 0.5, b: 0.5, a: 0.1 },
+      });
+    }
+    existingSet.layoutGrids = grids;
+
+    // Append directly — DO NOT use combineAsVariants on existing children: it detaches them
+    // from the set, loses their property context, and regenerates "Property 1/2/3" duplicates.
     for (const component of newComponents) {
       existingSet.appendChild(component);
     }
     componentSet = existingSet;
-    // Zoom to show the newly added components
     figma.viewport.scrollAndZoomIntoView(newComponents);
   } else {
     componentSet = figma.combineAsVariants(newComponents, figma.currentPage);
     componentSet.name = 'Aploji-Master';
-    // Set auto layout
-    componentSet.layoutMode = 'VERTICAL';
-    componentSet.primaryAxisSizingMode = 'AUTO';
+
+    // Horizontal-wrap grid layout: each person occupies one row, each pose one column
+    const numCols = newComponents.length;
+    componentSet.layoutMode = 'HORIZONTAL';
+    (componentSet as unknown as { layoutWrap: string }).layoutWrap = 'WRAP';
+    componentSet.primaryAxisSizingMode = 'FIXED';
     componentSet.counterAxisSizingMode = 'AUTO';
     componentSet.itemSpacing = 0;
+    componentSet.resize(numCols * FRAME_SIZE, FRAME_SIZE);
+
+    // ROWS grid: 1 row per person (starts at 1), COLUMNS grid: one column per pose
+    componentSet.layoutGrids = [
+      {
+        pattern: 'ROWS',
+        alignment: 'MIN',
+        gutterSize: 0,
+        offset: 0,
+        count: 1,
+        sectionSize: FRAME_SIZE,
+        visible: true,
+        color: { r: 0.5, g: 0.5, b: 0.5, a: 0.1 },
+      },
+      {
+        pattern: 'COLUMNS',
+        alignment: 'MIN',
+        gutterSize: 0,
+        offset: 0,
+        count: numCols,
+        sectionSize: FRAME_SIZE,
+        visible: true,
+        color: { r: 0.5, g: 0.5, b: 0.5, a: 0.1 },
+      },
+    ];
+
     const { x, y } = figma.viewport.center;
     componentSet.x = x - componentSet.width / 2;
     componentSet.y = y - componentSet.height / 2;
-    // Zoom to show the new component set
     figma.viewport.scrollAndZoomIntoView([componentSet]);
   }
   figma.notify(
@@ -171,34 +237,19 @@ figma.on('selectionchange', () => {
 // ============================================
 
 figma.ui.onmessage = async (msg) => {
-  // Manual refresh
-  if (msg.type === 'get-selection') {
-    const images = getImageNodesFromSelection(figma.currentPage.selection);
-    figma.ui.postMessage(
-      images.length > 0 ? { type: 'selection-update', data: { images } } : { type: 'selection-cleared' }
-    );
-    return;
-  }
-
-  // Lock the currently selected component set
-  if (msg.type === 'lock-component-set') {
-    const sel = figma.currentPage.selection;
-    if (sel.length === 1 && sel[0].type === 'COMPONENT_SET') {
-      lockedSetId = sel[0].id;
-      lockedSetName = sel[0].name;
-      figma.ui.postMessage({ type: 'lock-confirmed', data: { id: lockedSetId, name: lockedSetName } });
+  // Find master component set by name on the current page
+  if (msg.type === 'find-master-set') {
+    const { name } = msg.data as { name: string };
+    const found = figma.currentPage.findOne(
+      (n) => n.type === 'COMPONENT_SET' && n.name === name
+    ) as ComponentSetNode | null;
+    if (found) {
+      lockedSetId = found.id;
+      figma.ui.postMessage({ type: 'master-found', data: { id: found.id, name: found.name } });
     } else {
-      figma.notify('Select a Component Set on the canvas first.', { error: true });
-      figma.ui.postMessage({ type: 'lock-failed' });
+      lockedSetId = null;
+      figma.ui.postMessage({ type: 'master-not-found' });
     }
-    return;
-  }
-
-  // Unlock
-  if (msg.type === 'unlock-component-set') {
-    lockedSetId = null;
-    lockedSetName = '';
-    figma.ui.postMessage({ type: 'lock-cleared' });
     return;
   }
 
