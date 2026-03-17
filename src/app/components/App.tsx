@@ -146,9 +146,9 @@ const App: React.FC = () => {
 
   // ── Render ────────────────────────────────────────────────────────────
   return (
-    <div className="flex flex-col gap-10 p-4">
+    <div className="flex flex-col p-4">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between border-b pb-4">
         <span className="text-sm font-semibold text-foreground">Emoji Kit Builder</span>
         <div className="flex items-center gap-2">
 
@@ -162,16 +162,14 @@ const App: React.FC = () => {
           </Button>
         </div>
       </div>
-
-      <div className="border-t border-border" />
-
+<div className="grid grid-cols-1 gap-y-8 mt-6">
       {/* ── STEP 1: Target ── */}
-      <div className="flex flex-col space-y-3">
+      <div className="flex flex-col space-y-3 ">
         <span className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">
           Step 1 — Target
         </span>
 
-        <label className="flex cursor-pointer select-none items-center justify-between gap-3">
+        <label className="flex cursor-pointer select-none items-center justify-between gap-3 -mt-1">
           <div className="space-y-0.5">
             <span className="text-sm text-foreground">Append to existing</span>
             <p className="text-xs text-muted-foreground">Find and append to an existing Aploji set</p>
@@ -295,6 +293,7 @@ const App: React.FC = () => {
             ))}
           </div>
         )}
+      </div>
       </div>
 
       {/* Success */}
