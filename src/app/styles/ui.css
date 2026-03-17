@@ -1,0 +1,17 @@
+@import 'tailwindcss';
+@import '@aplo/ui/styles';
+@source "../../../node_modules/@aplo/ui/dist";
+
+/* ─── Figma plugin overrides ─── */
+html,
+body,
+#react-page {
+  height: 100%;
+  overflow-y: auto;
+  overflow-x: hidden;
+  background-color: var(--color-background);
+  color: var(--color-foreground);
+  font-family: 'Lato', 'Inter', sans-serif;
+  margin: 0;
+  padding: 0;
+}

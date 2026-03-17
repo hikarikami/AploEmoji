@@ -1,0 +1,19 @@
+<script>
+  // Figma plugins run in generic null origins (data: / about:blank) which disallow localStorage access.
+  // Polyfill localStorage with a simple memory shim so third-party components (like @aplo/ui) don't throw.
+  try {
+    var x = window.localStorage.getItem('test');
+  } catch (e) {
+    var _data = {};
+    Object.defineProperty(window, 'localStorage', {
+      value: {
+        getItem: function(key) { return _data[key] || null; },
+        setItem: function(key, val) { _data[key] = String(val); },
+        removeItem: function(key) { delete _data[key]; },
+        clear: function() { _data = {}; }
+      },
+      writable: true
+    });
+  }
+</script>
+<div id="react-page"></div>

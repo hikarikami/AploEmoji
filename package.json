@@ -1,0 +1,50 @@
+{
+  "name": "aploemoji",
+  "version": "1.0.0",
+  "description": "Custom Figma plugin: AploEmoji",
+  "license": "ISC",
+  "scripts": {
+    "build": "webpack --mode=production",
+    "build:watch": "webpack --mode=development --watch",
+    "prettier:format": "prettier --write '**/*.{js,jsx,ts,tsx,css,json}' "
+  },
+  "dependencies": {
+    "@aplo/ui": "^0.3.0",
+    "@tailwindcss/postcss": "^4.2.1",
+    "lucide-react": "^0.577.0",
+    "postcss": "^8.5.8",
+    "postcss-import": "^16.1.1",
+    "postcss-loader": "^8.2.1",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "tailwindcss": "^4.2.1"
+  },
+  "devDependencies": {
+    "@figma/plugin-typings": "^1.50.0",
+    "@types/react": "^18.0.17",
+    "@types/react-dom": "^18.0.6",
+    "css-loader": "^6.7.1",
+    "html-webpack-plugin": "^5.5.0",
+    "husky": "^8.0.1",
+    "lint-staged": "^13.0.3",
+    "prettier": "^2.7.1",
+    "react-dev-utils": "^12.0.1",
+    "style-loader": "^3.3.1",
+    "ts-loader": "^9.3.1",
+    "typescript": "^4.7.4",
+    "url-loader": "^4.1.1",
+    "webpack": "^5.74.0",
+    "webpack-cli": "^4.10.0"
+  },
+  "husky": {
+    "hooks": {
+      "pre-commit": "lint-staged"
+    }
+  },
+  "lint-staged": {
+    "src/**/*.{js,jsx,ts,tsx,css,json}": [
+      "prettier --write",
+      "git add"
+    ]
+  }
+}
